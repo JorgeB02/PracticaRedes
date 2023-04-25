@@ -1,13 +1,6 @@
 pipeline {
     agent any
     stages {
-        stage('Checkout') {
-            steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/master']],
-                    userRemoteConfigs: [[credentialsId: 'git-credentials', url: 'https://github.com/username/repo.git']]])
-            }
-        }
         stage('Build') {
             steps {
                 sh './mvnw clean package'
