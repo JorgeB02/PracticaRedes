@@ -1,38 +1,24 @@
 pipeline {
-  agent any
-  
-  stages {
-    stage('Build') {
-      steps {
-        sh 'mvn clean package'
-      }
-    }
-    
-    stage('Build Docker image') {
-      steps {
-        script {
-          docker.build("mi-app:latest")
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                sh './mvnw clean package'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                sh 'docker build -t myapp .'
+            }
         }
-      }
-    }
-    
-    stage('Push Docker image to registry') {
-      steps {
-        script {
-          docker.withRegistry('https://registry.example.com', 'docker-registry-credentials') {
-            dockerImage.push()
-          }
+        stage('Deploy') {
+            environment {
+                CONTAINER_NAME = 'myapp-container'
+                PORT = '8080'
+            }
+            steps {
+                sh 'docker stop $CONTAINER_NAME || true'
+                sh 'docker rm $CONTAINER_NAME || true'
+                sh "docker run -d -p $PORT:$PORT --name $CONTAINER_NAME myapp"
+            }
         }
-      }
     }
-    
-    stage('Deploy') {
-      when {
-        branch 'master'
-      }
-      steps {
-        sh 'docker-compose up -d'
-      }
-    }
-  }
 }
