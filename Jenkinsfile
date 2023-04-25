@@ -1,33 +1,50 @@
 pipeline {
+    environment {
+        registry = "tu_usuario_docker_hub/proyecto"
+        registryCredential = 'docker-hub'
+        dockerImage = ''
+    }
     agent any
     stages {
-        stage('Build') {
+        stage('Clonar código fuente') {
             steps {
-                sh './mvnw clean package'
+                git 'https://github.com/tu_usuario/proyecto.git'
             }
         }
-        stage('Build Docker image') {
+        stage('Construir aplicación') {
             steps {
-                sh 'docker build -t my-app .'
+                sh './mvnw -B -DskipTests clean package'
             }
         }
-        stage('Run Docker container') {
-            steps {
-                sh 'docker run -d -p 8080:8080 my-app'
+        stage('Construir imagen Docker') {
+            steps{
+                script {
+                    dockerImage = docker.build registry + ":${env.BUILD_NUMBER}"
+                }
             }
         }
-        stage('Deploy') {
-            steps {
-                sh 'curl -X POST http://jenkins-server:8080/job/my-app/build?delay=0sec'
+        stage('Etiquetar imagen Docker') {
+            steps{
+                script {
+                    docker.withRegistry( '', registryCredential ) {
+                        dockerImage.tag "${env.BUILD_NUMBER}", "${registry}:latest"
+                    }
+                }
             }
         }
-    }
-    post {
-        success {
-            echo 'CI/CD pipeline completed successfully'
+        stage('Publicar imagen Docker en Docker Hub') {
+            steps{
+                script {
+                    docker.withRegistry( '', registryCredential ) {
+                        dockerImage.push()
+                    }
+                }
+            }
         }
-        failure {
-            echo 'CI/CD pipeline failed'
+        stage('Limpiar recursos') {
+            steps {
+                sh 'docker rmi ${registry}:${BUILD_NUMBER}'
+            }
         }
     }
 }
