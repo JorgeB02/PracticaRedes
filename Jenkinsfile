@@ -1,49 +1,32 @@
 pipeline {
-    environment {
-        registry = "tu_usuario_docker_hub/proyecto"
-        registryCredential = 'docker-hub'
-        dockerImage = ''
-    }
     agent any
+
     stages {
-        stage('Clonar código fuente') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/tu_usuario/proyecto.git'
+                // Clonar el repositorio de GitHub
+                git branch: 'main', url: 'https://github.com/username/repo.git'
             }
         }
-        stage('Construir aplicación') {
+
+        stage('Build') {
             steps {
-                sh './mvnw -B -DskipTests clean package'
+                // Construir la aplicación con Maven
+                sh './mvnw clean package'
             }
         }
-        stage('Construir imagen Docker') {
-            steps{
-                script {
-                    dockerImage = docker.build registry + ":${env.BUILD_NUMBER}"
-                }
-            }
-        }
-        stage('Etiquetar imagen Docker') {
-            steps{
-                script {
-                    docker.withRegistry( '', registryCredential ) {
-                        dockerImage.tag "${env.BUILD_NUMBER}", "${registry}:latest"
-                    }
-                }
-            }
-        }
-        stage('Publicar imagen Docker en Docker Hub') {
-            steps{
-                script {
-                    docker.withRegistry( '', registryCredential ) {
-                        dockerImage.push()
-                    }
-                }
-            }
-        }
-        stage('Limpiar recursos') {
+
+        stage('Test') {
             steps {
-                sh 'docker rmi ${registry}:${BUILD_NUMBER}'
+                // Ejecutar pruebas unitarias
+                sh './mvnw test'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // Desplegar la aplicación en un servidor
+                sh './mvnw spring-boot:run'
             }
         }
     }
