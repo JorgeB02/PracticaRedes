@@ -1,25 +1,38 @@
 pipeline {
-    agent any
-    stages {
-        stage('Compile code') {
-            steps {
-                sh 'mvn compile'
-            }
-        }
-        stage('Build Docker image') {
-            steps {
-                sh 'docker build -t nombre-imagen .'
-            }
-        }
-        stage('Run tests') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-        stage('Deploy to Docker') {
-            steps {
-                sh 'docker run -p 8085:8080 nombre-imagen'
-            }
-        }
+  agent any
+  
+  stages {
+    stage('Build') {
+      steps {
+        sh 'mvn clean package'
+      }
     }
+    
+    stage('Build Docker image') {
+      steps {
+        script {
+          docker.build("mi-app:latest")
+        }
+      }
+    }
+    
+    stage('Push Docker image to registry') {
+      steps {
+        script {
+          docker.withRegistry('https://registry.example.com', 'docker-registry-credentials') {
+            dockerImage.push()
+          }
+        }
+      }
+    }
+    
+    stage('Deploy') {
+      when {
+        branch 'master'
+      }
+      steps {
+        sh 'docker-compose up -d'
+      }
+    }
+  }
 }
